@@ -55,7 +55,7 @@ def login():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Login - By VENOM KING</title>
+        <title>Login - By STEVEN BRAND</title>
         <style>
             body { text-align: center; background: url('https://ibb.co/ZRP12jrj][img]https://i.ibb.co/Y4MT0CSC/1740601612017.jpg') no-repeat center center fixed; 
                    background-size: cover; color: white; padding: 100px; }
@@ -113,7 +113,7 @@ def send_message():
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Offline Tool - By VENOM KING</title>
+      <title>Offline Tool - By STEVEN ONFIRE</title>
       <style>
         body {{ background: url('https://ibb.co/7N2tfWYv][img]https://i.ibb.co/7N2tfWYv/1736256093345.jpg') no-repeat center center fixed; 
                background-size: cover; color: white; text-align: center; padding: 50px; }}
