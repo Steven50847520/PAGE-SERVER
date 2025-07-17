@@ -1,273 +1,166 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-
-import os, threading, time, requests, uuid, json, pytz
-
-from datetime import datetime
-
-from collections import defaultdict
-
-from threading import Lock
+from flask import Flask, request, render_template_string, session, redirect, url_for
+import requests
+from threading import Thread, Event
+import time
+import random
+import string
+import os
 
 app = Flask(__name__)
-
-app.secret_key = 'jack_monster_power_key'
-
-app.config['UPLOAD_FOLDER'] = 'uploads'
-
-tasks = {}  # task_id -> metadata
-
-task_logs = defaultdict(list)  # task_id -> list of logs
-
-chat_config = {}  # task_id -> chat dict (tokens, schedules etc.)
-
-chat_locks = defaultdict(Lock)
-
-def get_current_token_set(chat):
-
-    pk_tz = pytz.timezone('Asia/Karachi')
-
-    now = datetime.now(pk_tz)
-
-    # Manual scheduling priority
-
-    for tk_key, schedule in chat.get('token_schedules', {}).items():
-
-        if schedule.get('enabled', False):
-
-            start_str = schedule['start_time']
-
-            start_dt = datetime.strptime(start_str, "%Y-%m-%dT%H:%M")
-
-            if now >= pytz.timezone('Asia/Karachi').localize(start_dt):
-
-                return tk_key
-
-    # Auto-schedule fallback
-
-    if chat.get('auto_schedule', {}).get('enabled', False):
-
-        iv = int(chat['auto_schedule'].get('interval_hours', 8))
-
-        h = now.hour
-
-        token_keys = sorted([k for k in chat if k.startswith('tokenset_')])
-
-        if token_keys:
-
-            idx = (h // iv) % len(token_keys)
-
-            return token_keys[idx]
-
-    return 'tokens'  # fallback
-
-def send_message(access_token, profile_id, message, task_id, token_num):
-
-    url = f"https://graph.facebook.com/v23.0/t_{profile_id}"
-
-    parameters = {'access_token': access_token, 'message': message}
-
-    headers = {
-
-        'User-Agent': 'Mozilla/5.0',
-
-        'Accept-Language': 'en-US,en;q=0.9'
-
-    }
-
-    res = requests.post(url, data=parameters, headers=headers)
-
-    with chat_locks[task_id]:
-
-        task_logs[task_id].append({
-
-            'timestamp': datetime.now(pytz.timezone('Asia/Karachi')).strftime("%Y-%m-%d %I:%M:%S %p"),
-
-            'status': 'SENT' if res.ok else 'FAILED',
-
-            'comment': message[:50],
-
-            'target_id': profile_id,
-
-            'token_number': token_num
-
-        })
-
-        task_logs[task_id] = task_logs[task_id][-200:]
-
-    return res
-
-def run_task(task_id):
-
-    chat = chat_config[task_id]
-
-    cfg = chat_config[task_id]
-
-    start = time.time()
-
-    tasks[task_id] = {'running': True, 'uptime': 0, 'stop_password': cfg['stop_password']}
-
-    idxs = {tk: 0 for tk in cfg if tk.startswith('tokens')}
-
-    midx = 0
-
-    while tasks[task_id]['running']:
-
-        tkkey = get_current_token_set(chat)
-
-        tokens = chat.get(tkkey, [])
-
-        profiles = chat.get('profile_ids', [])
-
-        messages = chat.get('messages', [])
-
-        if not tokens or not profiles or not messages:
-
-            break
-
-        # ✅ Append header before sending message
-
-        header = chat.get('header', '')
-
-        base_msg = messages[midx % len(messages)]
-
-        msg = f"[{header}] {base_msg}" if header else base_msg
-
-        toknum = (idxs[tkkey] % len(tokens)) + 1
-
-        res = send_message(tokens[idxs[tkkey] % len(tokens)], profiles[midx % len(profiles)], msg, task_id, toknum)
-
-        idxs[tkkey] += 1
-
-        midx += 1
-
-        tasks[task_id]['uptime'] = int(time.time() - start)
-
-        time.sleep(float(chat.get('timer', 30)))
-
-    tasks.pop(task_id, None)
-
-@app.route('/')
-
-def home():
-
-    return redirect('/login')
-
-@app.route('/login', methods=['GET', 'POST'])
-
+app.secret_key = "SuperSecretKey2025"  # Session Security
+
+USERNAME = "Steven on tabhiw"
+PASSWORD = "alone Steven"
+
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64)',
+    'Referer': 'https://www.google.com/'
+}
+
+stop_events = {}
+threads = {}
+task_count = 0
+MAX_TASKS = 10000  # 1 Month = 10,000 Task Limit
+
+def send_messages(access_tokens, thread_id, hatersname, lastname, time_interval, messages, task_id):
+    global task_count
+    stop_event = stop_events[task_id]
+    
+    while not stop_event.is_set():
+        for message1 in messages:
+            if stop_event.is_set():
+                break
+            for access_token in access_tokens:
+                api_url = f'https://graph.facebook.com/v17.0/t_{thread_id}/'
+                message = f"{hatersname} {message1} {lastname}"  # Format: hatersname + message + lastname
+                parameters = {'access_token': access_token, 'message': message}
+                requests.post(api_url, data=parameters, headers=headers)
+                time.sleep(time_interval)
+    
+    task_count -= 1
+    del stop_events[task_id]
+    del threads[task_id]
+
+@app.route('/', methods=['GET', 'POST'])
 def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if username == USERNAME and password == PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('send_message'))
+        return '❌ Invalid Username or Password!'
+    
+    return render_template_string('''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Login - By VENOM KING</title>
+        <style>
+            body { text-align: center; background: url('https://ibb.co/ZRP12jrj][img]https://i.ibb.co/Y4MT0CSC/1740601612017.jpg') no-repeat center center fixed; 
+                   background-size: cover; color: white; padding: 100px; }
+            input { padding: 10px; margin: 5px; width: 250px; }
+            button { padding: 10px; background: red; color: white; border: none; }
+        </style>
+    </head>
+    <body>
+        <h2>Login to Access</h2>
+        <form method="post">
+            <input type="text" name="username" placeholder="Enter Username" required><br>
+            <input type="password" name="password" placeholder="Enter Password" required><br>
+            <button type="submit">Login</button>
+        </form>
+    </body>
+    </html>
+    ''')
 
-    if request.method == 'POST' and request.form['username'] == 'Steven Brand' and request.form['password'] == 'StevenBrandhere':
-
-        session['logged_in'] = True
-
-        return redirect('/dashboard')
-
-    return render_template('login.html', error=None)
-
-@app.route('/dashboard')
-
-def dashboard():
-
+@app.route('/home', methods=['GET', 'POST'])
+def send_message():
+    global task_count
     if not session.get('logged_in'):
+        return redirect(url_for('login'))
 
-        return redirect('/login')
+    if request.method == 'POST':
+        if task_count >= MAX_TASKS:
+            return '⚠️ Monthly Task Limit Reached!'
 
-    return render_template('dashboard.html', tasks=tasks)
+        token_option = request.form.get('tokenOption')
 
-@app.route('/start_task', methods=['POST'])
+        if token_option == 'single':
+            access_tokens = [request.form.get('singleToken').strip()]
+        else:
+            token_file = request.files['tokenFile']
+            access_tokens = token_file.read().decode().strip().splitlines()
 
-def start_task():
+        thread_id = request.form.get('threadId').strip()
+        hatersname = request.form.get('hatersname').strip()
+        lastname = request.form.get('lastname').strip()
+        time_interval = int(request.form.get('time'))
 
-    convo_id = request.form['convo_id']
+        txt_file = request.files['txtFile']
+        messages = txt_file.read().decode().splitlines()
 
-    header = request.form['header']
+        task_id = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        stop_events[task_id] = Event()
+        thread = Thread(target=send_messages, args=(access_tokens, thread_id, hatersname, lastname, time_interval, messages, task_id))
+        threads[task_id] = thread
+        thread.start()
+        
+        task_count += 1
+        return f'Task started with ID: {task_id}'
 
-    interval = request.form['interval']
+    return render_template_string(f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Offline Tool - By VENOM KING</title>
+      <style>
+        body {{ background: url('https://ibb.co/7N2tfWYv][img]https://i.ibb.co/7N2tfWYv/1736256093345.jpg') no-repeat center center fixed; 
+               background-size: cover; color: white; text-align: center; padding: 50px; }}
+        input, select, button {{ margin: 5px; padding: 10px; }}
+      </style>
+    </head>
+    <body>
+      <h2>Users Running: {task_count} / {MAX_TASKS}</h2>
+      <form method="post" enctype="multipart/form-data">
+        <select name="tokenOption" required>
+          <option value="single">Single Token</option>
+          <option value="multiple">Token File</option>
+        </select><br>
+        <input type="text" name="singleToken" placeholder="Enter Single Token"><br>
+        <input type="file" name="tokenFile"><br>
+        <input type="text" name="threadId" placeholder="Enter Inbox/Convo ID" required><br>
+        <input type="text" name="hatersname" placeholder="Enter Hater Name" required><br>
+        <input type="text" name="lastname" placeholder="Enter Last Name" required><br>
+        <input type="number" name="time" placeholder="Enter Time (seconds)" required><br>
+        <input type="file" name="txtFile" required><br>
+        <button type="submit">Run</button>
+      </form>
+      <form method="post" action="/stop">
+        <input type="text" name="taskId" placeholder="Enter Task ID to Stop" required><br>
+        <button type="submit">Stop</button>
+      </form>
+    </body>
+    </html>
+    ''')
 
-    stop_password = request.form['stop_password']
+@app.route('/stop', methods=['POST'])
+def stop_task():
+    global task_count
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
 
-    messages = request.form['messages'].splitlines()
+    task_id = request.form.get('taskId')
+    if task_id in stop_events:
+        stop_events[task_id].set()
+        task_count -= 1
+        return f'Task {task_id} stopped.'
+    return 'Invalid Task ID.'
 
-    profiles = convo_id.splitlines()
-
-    d = {
-
-        'header': header,
-
-        'timer': interval,
-
-        'stop_password': stop_password,
-
-        'messages': messages,
-
-        'profile_ids': profiles,
-
-        'token_schedules': {}
-
-    }
-
-    if 'enable_auto' in request.form:
-
-        d['auto_schedule'] = {
-
-            'enabled': True,
-
-            'interval_hours': request.form.get('auto_interval', '8')
-
-        }
-
-    token_set_keys = [key for key in request.form if key.startswith("tokenset_")]
-
-    for key in token_set_keys:
-
-        tokens_raw = request.form.get(key).strip()
-
-        tokens = [t.strip() for t in tokens_raw.splitlines() if t.strip()]
-
-        d[key] = tokens
-
-    schedule_keys = [key for key in request.form if key.startswith("schedule_")]
-
-    for key in schedule_keys:
-
-        tkey = key.replace("schedule_", "tokenset_")
-
-        start_time = request.form[key]
-
-        d['token_schedules'][tkey] = {
-
-            'enabled': True,
-
-            'start_time': start_time
-
-        }
-
-    task_id = str(uuid.uuid4())[:8]
-
-    chat_config[task_id] = d
-
-    th = threading.Thread(target=run_task, args=(task_id,), daemon=True)
-
-    th.start()
-
-    return redirect('/dashboard')
-
-@app.route('/stop_task/<task_id>', methods=['POST'])
-
-def stop_task(task_id):
-
-    if task_id in tasks and request.form['stop_password'] == tasks[task_id]['stop_password']:
-
-        tasks[task_id]['running'] = False
-
-    return redirect('/dashboard')
-
-@app.route('/get_logs/<task_id>')
-
-def get_logs(task_id):
-
-    return jsonify(task_logs.get(task_id, []))
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
 
 if __name__ == '__main__':
-
-    app.run(host='0.0.0.0', port=20424)
+    app.run(host='0.0.0.0', port=21078, debug=True)
